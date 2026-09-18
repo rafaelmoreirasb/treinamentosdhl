@@ -1,0 +1,9 @@
+{
+  "name": "dhl-gestao-treinamentos",
+  "version": "1.0.0",
+  "private": true,
+  "description": "DHL | Gestão de Treinamentos — aplicativo estático (HTML/CSS/JS) com banco de dados no Supabase.",
+  "scripts": {
+    "build": "node scripts/build-config.js"
+  }
+}

@@ -1,0 +1,76 @@
+/* ==========================================================================
+   variables.css
+   Tokens de design — cores, tipografia, espaçamento, sombras e raios.
+   Alterar valores aqui reflete em todo o aplicativo.
+   ========================================================================== */
+
+:root {
+  /* Cores de marca (DHL) */
+  --dhl-yellow: #FFCC00;
+  --dhl-yellow-dark: #E6B800;
+  --dhl-red: #D40511;
+  --dhl-red-dark: #A80410;
+
+  /* Neutros */
+  --white: #FFFFFF;
+  --gray-025: #FAFAFB;
+  --gray-050: #F4F5F7;
+  --gray-100: #E9EBEF;
+  --gray-200: #DADDE3;
+  --gray-400: #9AA1AC;
+  --gray-600: #5B6470;
+  --gray-800: #2C313A;
+  --gray-900: #1B1E23;
+
+  /* Semânticas */
+  --color-bg: var(--gray-050);
+  --color-surface: var(--white);
+  --color-text-primary: var(--gray-900);
+  --color-text-secondary: var(--gray-600);
+  --color-text-muted: var(--gray-400);
+  --color-border: var(--gray-200);
+  --color-accent: var(--dhl-red);
+  --color-accent-contrast: var(--white);
+  --color-highlight: var(--dhl-yellow);
+
+  --color-success: #1E8E3E;
+  --color-success-bg: #E7F5EC;
+  --color-warning: #B25E00;
+  --color-warning-bg: #FDF0E1;
+  --color-danger: var(--dhl-red);
+  --color-danger-bg: #FBE6E8;
+  --color-info: #2461B0;
+  --color-info-bg: #E7F0FB;
+
+  /* Tipografia */
+  --font-base: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --fs-xs: 0.75rem;    /* 12px */
+  --fs-sm: 0.8125rem;  /* 13px */
+  --fs-base: 0.9375rem;/* 15px */
+  --fs-md: 1.0625rem;  /* 17px */
+  --fs-lg: 1.375rem;   /* 22px */
+  --fs-xl: 1.75rem;    /* 28px */
+  --fs-2xl: 2.25rem;   /* 36px */
+
+  /* Espaçamento */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  /* Raios e sombras */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --shadow-sm: 0 1px 2px rgba(27, 30, 35, 0.06);
+  --shadow-md: 0 4px 16px rgba(27, 30, 35, 0.08);
+
+  /* Layout */
+  --sidebar-width: 248px;
+  --header-height: 64px;
+  --transition-fast: 150ms ease;
+  --transition-base: 220ms ease;
+}
