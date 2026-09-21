@@ -117,6 +117,20 @@ window.Store = (function () {
     return treinamentos.find(t => t.id === id) || null;
   }
 
+  function getTreinamentosPorAplicacao(aplicacaoId) {
+    return treinamentos.filter(t => t.aplicacaoId === aplicacaoId);
+  }
+
+  // UUID v4 simples — usado só para agrupar linhas da mesma aplicação de
+  // treinamento (aplicacaoId), não para nada relacionado a segurança.
+  function gerarUuid() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  }
+
   async function addTreinamento(dados) {
     const registro = await TreinamentosService.criar(dados);
     treinamentos.push(registro);
@@ -133,6 +147,59 @@ window.Store = (function () {
   async function deleteTreinamento(id) {
     await TreinamentosService.excluir(id);
     treinamentos = treinamentos.filter(t => t.id !== id);
+    return true;
+  }
+
+  // Cria UM treinamento (uma "aplicação") para VÁRIOS colaboradores de
+  // uma vez — todas as linhas geradas compartilham o mesmo aplicacaoId,
+  // permitindo diferenciar "1 treinamento aplicado" de "N colaboradores
+  // treinados".
+  async function addAplicacaoTreinamento({ tipo, data, responsavel, cargaHoraria, observacao, colaboradorIds }) {
+    const aplicacaoId = gerarUuid();
+    const linhas = colaboradorIds.map(colaboradorId => ({
+      colaboradorId, tipo, data, responsavel, observacao, aplicacaoId, cargaHoraria,
+    }));
+    const criados = await TreinamentosService.criarVarios(linhas);
+    treinamentos = treinamentos.concat(criados);
+    return criados;
+  }
+
+  // Atualiza os dados compartilhados de uma aplicação (data, responsável,
+  // carga horária, observação) e reconcilia a lista de participantes:
+  // quem foi desmarcado é removido, quem é novo é adicionado, quem
+  // permanece só tem os campos compartilhados atualizados.
+  async function atualizarAplicacaoTreinamento(aplicacaoId, { tipo, data, responsavel, cargaHoraria, observacao, colaboradorIds }) {
+    const atuais = getTreinamentosPorAplicacao(aplicacaoId);
+    const idsAtuais = new Set(atuais.map(t => t.colaboradorId));
+    const idsNovos = new Set(colaboradorIds);
+
+    const paraManter = atuais.filter(t => idsNovos.has(t.colaboradorId));
+    const paraRemover = atuais.filter(t => !idsNovos.has(t.colaboradorId));
+    const idsParaCriar = colaboradorIds.filter(id => !idsAtuais.has(id));
+
+    for (const t of paraManter) {
+      await TreinamentosService.atualizar(t.id, { colaboradorId: t.colaboradorId, tipo, data, responsavel, observacao, cargaHoraria });
+    }
+    for (const t of paraRemover) {
+      await TreinamentosService.excluir(t.id);
+    }
+    let criados = [];
+    if (idsParaCriar.length > 0) {
+      criados = await TreinamentosService.criarVarios(idsParaCriar.map(colaboradorId => ({
+        colaboradorId, tipo, data, responsavel, observacao, aplicacaoId, cargaHoraria,
+      })));
+    }
+
+    treinamentos = treinamentos.filter(t => t.aplicacaoId !== aplicacaoId);
+    const mantidosAtualizados = paraManter.map(t => ({ ...t, tipo, data, responsavel, observacao, cargaHoraria }));
+    treinamentos = treinamentos.concat(mantidosAtualizados, criados);
+
+    return getTreinamentosPorAplicacao(aplicacaoId);
+  }
+
+  async function excluirAplicacaoTreinamento(aplicacaoId) {
+    await TreinamentosService.excluirPorAplicacao(aplicacaoId);
+    treinamentos = treinamentos.filter(t => t.aplicacaoId !== aplicacaoId);
     return true;
   }
 
@@ -236,9 +303,13 @@ window.Store = (function () {
     getUltimoTreinamento,
     temTreinamento,
     getTreinamentoPorId,
+    getTreinamentosPorAplicacao,
     addTreinamento,
     updateTreinamento,
     deleteTreinamento,
+    addAplicacaoTreinamento,
+    atualizarAplicacaoTreinamento,
+    excluirAplicacaoTreinamento,
     // aduana
     getAduanaOcorrencias,
     usandoDadosFicticiosAduana,

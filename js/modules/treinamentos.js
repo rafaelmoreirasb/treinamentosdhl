@@ -4,28 +4,33 @@
    Lista todos os treinamentos registrados, com filtros por período,
    colaborador e tipo, e permite cadastrar, editar e excluir registros.
 
-   ETAPA 4: filtros funcionais, edição e exclusão (com confirmação), e o
-   campo "Colaborador" do formulário agora é uma lista pesquisável (o
-   navegador filtra as opções enquanto a pessoa digita).
+   ALTERAÇÕES 1 e 2: um treinamento agora pode ser aplicado a VÁRIOS
+   colaboradores de uma vez (uma "aplicação"), com carga horária. Cada
+   linha da tabela do banco continua sendo um colaborador, mas todas as
+   linhas da mesma aplicação compartilham "aplicacaoId" — a tela sempre
+   trabalha no nível de "aplicação" (um card = um treinamento aplicado,
+   para N colaboradores), nunca mostrando o mesmo treinamento como se
+   fossem vários diferentes.
    ========================================================================== */
 
 window.ModuleTreinamentos = (function () {
 
   let filtros = { inicio: '', fim: '', colaboradorId: '' };
-  // Guarda o id do treinamento sendo excluído, enquanto a confirmação
-  // está aberta (evita excluir o item errado por engano).
-  let idParaExcluir = null;
+  // Guarda o aplicacaoId sendo excluído, enquanto a confirmação está aberta.
+  let aplicacaoIdParaExcluir = null;
 
   function render() {
     const todos = window.Store.getTreinamentos().filter(t => t.tipo === 'Aduana');
     const filtrados = aplicarFiltros(todos).sort((a, b) => b.data.localeCompare(a.data));
+    const aplicacoesFiltradas = Utils.agruparTreinamentosPorAplicacao(filtrados).size;
+    const aplicacoesTotais = Utils.agruparTreinamentosPorAplicacao(todos).size;
 
     return `
       <div class="section">
         <div class="section__header">
           <div>
             <h2 class="section__title">Treinamentos registrados</h2>
-            <p class="section__hint">${filtrados.length} de ${todos.length} registro(s)</p>
+            <p class="section__hint">${aplicacoesFiltradas} de ${aplicacoesTotais} treinamento(s) aplicado(s) · ${filtrados.length} participação(ões)</p>
           </div>
           <button class="btn btn--primary" type="button" onclick="ModuleTreinamentos.abrirModalTreinamento({})">+ Novo treinamento</button>
         </div>
@@ -35,7 +40,6 @@ window.ModuleTreinamentos = (function () {
         <div class="card" style="margin-bottom:var(--space-4)">
           ${filtrosToolbar()}
         </div>
-
 
         <div class="card card--tight" id="treinamentos-tabela">
           ${tabela(filtrados)}
@@ -103,29 +107,45 @@ window.ModuleTreinamentos = (function () {
     `;
   }
 
+  // Tabela agrupada por APLICAÇÃO — uma linha por treinamento aplicado,
+  // nunca uma linha por participante (isso evitaria o mesmo treinamento
+  // aparecer "duplicado" visualmente).
   function tabela(registros) {
     if (registros.length === 0) {
       return `<div class="data-table__empty">Nenhum treinamento encontrado para os filtros selecionados.</div>`;
     }
 
-    const linhas = registros.map(t => {
-      const colaborador = Utils.getColaborador(t.colaboradorId);
-      const nome = colaborador ? colaborador.nome : '(colaborador não encontrado)';
+    const porAplicacao = Utils.agruparTreinamentosPorAplicacao(registros);
+    const aplicacoes = [...porAplicacao.entries()]
+      .map(([aplicacaoId, linhas]) => ({ aplicacaoId, linhas }))
+      .sort((a, b) => b.linhas[0].data.localeCompare(a.linhas[0].data));
+
+    const linhasHtml = aplicacoes.map(({ aplicacaoId, linhas }) => {
+      const primeira = linhas[0];
+      const nomesEls = linhas.map(l => {
+        const c = Utils.getColaborador(l.colaboradorId);
+        const nome = c ? c.nome : '(colaborador não encontrado)';
+        return `<span data-nav="colaboradores/${l.colaboradorId}" style="cursor:pointer;text-decoration:underline;text-decoration-style:dotted;" title="Ver perfil">${Utils.escapeHtml(nome)}</span>`;
+      });
+      const mostrar = nomesEls.slice(0, 3).join(', ');
+      const resto = nomesEls.length > 3 ? ` e mais ${nomesEls.length - 3}` : '';
+
       return `
         <tr>
-          <td data-nav="colaboradores/${t.colaboradorId}" style="cursor:pointer">
+          <td>
             <div class="data-table__name">
-              <span class="avatar">${colaborador ? Utils.initials(colaborador.nome) : '?'}</span>
-              <span>${nome}</span>
+              <span class="avatar" title="${linhas.length} colaborador(es)">${linhas.length}</span>
+              <span>${mostrar}${resto}</span>
             </div>
           </td>
-          <td><span class="badge badge--info">${t.tipo}</span></td>
-          <td>${Utils.formatDate(t.data)}</td>
-          <td>${Utils.escapeHtml(t.responsavel)}</td>
-          <td>${t.observacao ? Utils.escapeHtml(t.observacao) : '<span class="section__hint">—</span>'}</td>
+          <td><span class="badge badge--info">${primeira.tipo}</span></td>
+          <td>${Utils.formatDate(primeira.data)}</td>
+          <td>${Utils.escapeHtml(primeira.responsavel)}</td>
+          <td>${primeira.cargaHoraria != null ? String(primeira.cargaHoraria).replace('.', ',') + 'h' : '<span class="section__hint">—</span>'}</td>
+          <td>${primeira.observacao ? Utils.escapeHtml(primeira.observacao) : '<span class="section__hint">—</span>'}</td>
           <td class="data-table__acoes">
-            <button class="link-action" type="button" onclick="ModuleTreinamentos.abrirModalTreinamento({id:'${t.id}'})">Editar</button>
-            <button class="link-action link-action--danger" type="button" onclick="ModuleTreinamentos.confirmarExclusao('${t.id}')">Excluir</button>
+            <button class="link-action" type="button" onclick="ModuleTreinamentos.abrirModalTreinamento({aplicacaoId:'${aplicacaoId}'})">Editar</button>
+            <button class="link-action link-action--danger" type="button" onclick="ModuleTreinamentos.confirmarExclusao('${aplicacaoId}')">Excluir</button>
           </td>
         </tr>
       `;
@@ -136,68 +156,87 @@ window.ModuleTreinamentos = (function () {
         <table class="data-table">
           <thead>
             <tr>
-              <th>Colaborador</th>
+              <th>Colaboradores</th>
               <th>Tipo</th>
               <th>Data</th>
               <th>Responsável</th>
+              <th>Carga horária</th>
               <th>Observação</th>
               <th>Ações</th>
             </tr>
           </thead>
-          <tbody>${linhas}</tbody>
+          <tbody>${linhasHtml}</tbody>
         </table>
       </div>
     `;
   }
 
   // -------------------------------------------------------------
-  // Formulário (criar / editar) — em modal
+  // Formulário (criar / editar) — sempre com seleção múltipla de
+  // colaboradores, mesmo ao editar (dá para adicionar/remover
+  // participantes de uma aplicação já existente).
   // -------------------------------------------------------------
 
-  // opcoes: { id } para editar um treinamento existente, ou
-  // { colaboradorId } para pré-selecionar o colaborador num novo registro.
+  // opcoes: { aplicacaoId } para editar uma aplicação existente, ou
+  // { colaboradorId } para pré-marcar um colaborador num novo registro
+  // (ex.: botão "+ Novo treinamento" no perfil do colaborador).
   function abrirModalTreinamento(opcoes) {
     opcoes = opcoes || {};
-    const editando = opcoes.id ? Store.getTreinamentoPorId(opcoes.id) : null;
-    const colaboradorAtual = editando
-      ? Utils.getColaborador(editando.colaboradorId)
-      : (opcoes.colaboradorId ? Utils.getColaborador(opcoes.colaboradorId) : null);
+    const editando = !!opcoes.aplicacaoId;
+    const linhasExistentes = editando ? Store.getTreinamentosPorAplicacao(opcoes.aplicacaoId) : [];
+    const primeira = linhasExistentes[0] || null;
+    const selecionados = new Set(linhasExistentes.map(t => t.colaboradorId));
+    if (!editando && opcoes.colaboradorId) selecionados.add(opcoes.colaboradorId);
 
-    const datalist = window.Store.getColaboradores().map(c =>
-      `<option value="${Utils.escapeHtml(c.nome)}">`
-    ).join('');
-
+    const colaboradores = window.Store.getColaboradores().slice().sort((a, b) => a.nome.localeCompare(b.nome));
     const hoje = new Date().toISOString().slice(0, 10);
+
+    const checklistHtml = colaboradores.map(c => `
+      <label class="checklist-item">
+        <input type="checkbox" value="${c.id}" ${selecionados.has(c.id) ? 'checked' : ''} onchange="ModuleTreinamentos.atualizarContagemSelecionados()">
+        <span>${Utils.escapeHtml(c.nome)}</span>
+      </label>
+    `).join('');
 
     Modal.open({
       title: editando ? 'Editar treinamento' : 'Novo treinamento',
+      wide: true,
       bodyHtml: `
-        <form id="form-treinamento" onsubmit="ModuleTreinamentos.salvarTreinamento(event, ${editando ? `'${editando.id}'` : 'null'})">
-          <div class="field">
-            <label for="campo-colaborador-nome">Colaborador</label>
-            <input class="input" type="text" id="campo-colaborador-nome" list="lista-colaboradores"
-                   placeholder="Digite para pesquisar..." autocomplete="off"
-                   value="${colaboradorAtual ? Utils.escapeHtml(colaboradorAtual.nome) : ''}" required>
-            <datalist id="lista-colaboradores">${datalist}</datalist>
-          </div>
-          <div class="field">
-            <label for="campo-tipo">Tipo de treinamento</label>
-            <select class="input" id="campo-tipo" required>
-              <option value="Aduana" selected>Aduana</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="campo-data">Data</label>
-            <input class="input" type="date" id="campo-data" value="${editando ? editando.data : hoje}" required>
-          </div>
-          <div class="field">
-            <label for="campo-responsavel">Responsável</label>
-            <input class="input" type="text" id="campo-responsavel" placeholder="Nome do responsável"
-                   value="${editando ? Utils.escapeHtml(editando.responsavel) : ''}" required>
+        <form id="form-treinamento" onsubmit="ModuleTreinamentos.salvarTreinamento(event, ${editando ? `'${opcoes.aplicacaoId}'` : 'null'})">
+          <div class="analise-fase__numeros" style="grid-template-columns:1fr 1fr; column-gap:var(--space-4)">
+            <div class="field">
+              <label for="campo-tipo">Tipo de treinamento</label>
+              <select class="input" id="campo-tipo" required>
+                <option value="Aduana" selected>Aduana</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="campo-data">Data</label>
+              <input class="input" type="date" id="campo-data" value="${primeira ? primeira.data : hoje}" required>
+            </div>
+            <div class="field">
+              <label for="campo-responsavel">Responsável</label>
+              <input class="input" type="text" id="campo-responsavel" placeholder="Nome do responsável"
+                     value="${primeira ? Utils.escapeHtml(primeira.responsavel) : ''}" required>
+            </div>
+            <div class="field">
+              <label for="campo-carga-horaria">Carga horária (horas)</label>
+              <input class="input" type="number" id="campo-carga-horaria" min="0" step="0.5" placeholder="Ex: 2"
+                     value="${primeira && primeira.cargaHoraria != null ? primeira.cargaHoraria : ''}">
+            </div>
           </div>
           <div class="field">
             <label for="campo-observacao">Observação (opcional)</label>
-            <textarea class="input" id="campo-observacao" rows="3" placeholder="Alguma observação sobre este treinamento...">${editando ? Utils.escapeHtml(editando.observacao || '') : ''}</textarea>
+            <textarea class="input" id="campo-observacao" rows="2" placeholder="Alguma observação sobre este treinamento...">${primeira ? Utils.escapeHtml(primeira.observacao || '') : ''}</textarea>
+          </div>
+          <div class="field">
+            <label>Colaboradores *</label>
+            <input class="input" type="text" placeholder="Pesquisar colaborador..." style="margin-bottom:var(--space-2)"
+                   oninput="ModuleTreinamentos.filtrarListaColaboradores(this.value)">
+            <div class="checklist-colaboradores" id="checklist-colaboradores">
+              ${checklistHtml || '<p class="section__hint" style="padding:var(--space-3)">Nenhum colaborador cadastrado ainda.</p>'}
+            </div>
+            <p class="section__hint" id="contagem-selecionados" style="margin-top:6px">${selecionados.size} selecionado(s)</p>
           </div>
           <div class="form-actions">
             <button type="button" class="btn btn--ghost" onclick="Modal.close()">Cancelar</button>
@@ -208,37 +247,47 @@ window.ModuleTreinamentos = (function () {
     });
   }
 
-  async function salvarTreinamento(event, idEditando) {
+  function filtrarListaColaboradores(termo) {
+    const alvo = termo.trim().toLowerCase();
+    document.querySelectorAll('#checklist-colaboradores .checklist-item').forEach(item => {
+      item.style.display = item.textContent.toLowerCase().includes(alvo) ? '' : 'none';
+    });
+  }
+
+  function atualizarContagemSelecionados() {
+    const marcados = document.querySelectorAll('#checklist-colaboradores input[type="checkbox"]:checked').length;
+    const el = document.getElementById('contagem-selecionados');
+    if (el) el.textContent = `${marcados} selecionado(s)`;
+  }
+
+  async function salvarTreinamento(event, aplicacaoIdEditando) {
     event.preventDefault();
 
-    const nomeColaborador = document.getElementById('campo-colaborador-nome').value.trim();
     const tipo = document.getElementById('campo-tipo').value;
     const data = document.getElementById('campo-data').value;
     const responsavel = document.getElementById('campo-responsavel').value.trim();
+    const cargaHorariaBruta = document.getElementById('campo-carga-horaria').value;
+    const cargaHoraria = cargaHorariaBruta === '' ? null : Number(cargaHorariaBruta);
     const observacao = document.getElementById('campo-observacao').value.trim();
+    const colaboradorIds = [...document.querySelectorAll('#checklist-colaboradores input[type="checkbox"]:checked')].map(el => el.value);
 
-    if (!nomeColaborador) { Toast.show('Informe o colaborador.', 'warning'); return; }
     if (!tipo) { Toast.show('Informe o tipo de treinamento.', 'warning'); return; }
     if (!data) { Toast.show('Informe a data.', 'warning'); return; }
     if (!responsavel) { Toast.show('Informe o responsável.', 'warning'); return; }
+    if (cargaHorariaBruta !== '' && (isNaN(cargaHoraria) || cargaHoraria < 0)) { Toast.show('Informe uma carga horária válida.', 'warning'); return; }
+    if (colaboradorIds.length === 0) { Toast.show('Selecione pelo menos um colaborador.', 'warning'); return; }
 
-    const colaborador = window.Store.getColaboradorPorNome(nomeColaborador);
-    if (!colaborador) {
-      Toast.show('Colaborador não encontrado. Selecione um nome da lista.', 'warning');
-      return;
-    }
-
-    const dados = { colaboradorId: colaborador.id, tipo, data, responsavel, observacao };
+    const dadosComuns = { tipo, data, responsavel, cargaHoraria, observacao, colaboradorIds };
     const botao = document.querySelector('#form-treinamento button[type="submit"]');
     if (botao) { botao.disabled = true; botao.textContent = 'Salvando...'; }
 
     try {
-      if (idEditando) {
-        await Store.updateTreinamento(idEditando, dados);
+      if (aplicacaoIdEditando) {
+        await Store.atualizarAplicacaoTreinamento(aplicacaoIdEditando, dadosComuns);
         Toast.show('Treinamento atualizado com sucesso.', 'success');
       } else {
-        await Store.addTreinamento(dados);
-        Toast.show('Treinamento registrado com sucesso.', 'success');
+        await Store.addAplicacaoTreinamento(dadosComuns);
+        Toast.show(`Treinamento registrado para ${colaboradorIds.length} colaborador(es).`, 'success');
       }
 
       Modal.close();
@@ -247,28 +296,33 @@ window.ModuleTreinamentos = (function () {
       }
     } catch (erro) {
       console.error('Erro ao salvar treinamento:', erro);
-      if (botao) { botao.disabled = false; botao.textContent = idEditando ? 'Salvar alterações' : 'Salvar treinamento'; }
+      if (botao) { botao.disabled = false; botao.textContent = aplicacaoIdEditando ? 'Salvar alterações' : 'Salvar treinamento'; }
       Toast.show('Não foi possível salvar. Verifique sua conexão e tente novamente.', 'warning');
     }
   }
 
   // -------------------------------------------------------------
-  // Exclusão (com confirmação)
+  // Exclusão (com confirmação) — exclui a aplicação inteira, para todos
+  // os colaboradores que participaram dela.
   // -------------------------------------------------------------
 
-  function confirmarExclusao(id) {
-    const registro = Store.getTreinamentoPorId(id);
-    if (!registro) return;
-    idParaExcluir = id;
-    const colaborador = Utils.getColaborador(registro.colaboradorId);
+  function confirmarExclusao(aplicacaoId) {
+    const linhas = Store.getTreinamentosPorAplicacao(aplicacaoId);
+    if (linhas.length === 0) return;
+    aplicacaoIdParaExcluir = aplicacaoId;
+
+    const nomes = linhas.map(t => {
+      const c = Utils.getColaborador(t.colaboradorId);
+      return c ? c.nome : '(colaborador não encontrado)';
+    });
 
     Modal.open({
       title: 'Excluir treinamento',
       bodyHtml: `
         <p style="margin-bottom:var(--space-4)">
-          Tem certeza que deseja excluir o treinamento de <strong>${colaborador ? Utils.escapeHtml(colaborador.nome) : 'colaborador'}</strong>
-          em <strong>${Utils.formatDate(registro.data)}</strong>? Esta ação não pode ser desfeita, e não afeta os
-          outros treinamentos deste colaborador.
+          Tem certeza que deseja excluir o treinamento de <strong>${Utils.formatDate(linhas[0].data)}</strong>?
+          Isso remove o registro para ${linhas.length === 1 ? 'este colaborador' : `estes ${linhas.length} colaboradores`}:
+          <strong>${nomes.map(n => Utils.escapeHtml(n)).join(', ')}</strong>. Esta ação não pode ser desfeita.
         </p>
         <div class="form-actions">
           <button type="button" class="btn btn--ghost" onclick="Modal.close()">Cancelar</button>
@@ -279,13 +333,13 @@ window.ModuleTreinamentos = (function () {
   }
 
   async function excluirConfirmado() {
-    if (!idParaExcluir) return;
+    if (!aplicacaoIdParaExcluir) return;
     const botao = document.getElementById('btn-confirmar-exclusao');
     if (botao) { botao.disabled = true; botao.textContent = 'Excluindo...'; }
 
     try {
-      await Store.deleteTreinamento(idParaExcluir);
-      idParaExcluir = null;
+      await Store.excluirAplicacaoTreinamento(aplicacaoIdParaExcluir);
+      aplicacaoIdParaExcluir = null;
       Modal.close();
       Toast.show('Treinamento excluído.', 'success');
       if (window.App && typeof window.App.refresh === 'function') {
@@ -304,6 +358,8 @@ window.ModuleTreinamentos = (function () {
     onFiltroChange,
     limparFiltros,
     abrirModalTreinamento,
+    filtrarListaColaboradores,
+    atualizarContagemSelecionados,
     salvarTreinamento,
     confirmarExclusao,
     excluirConfirmado,

@@ -48,8 +48,8 @@ window.Router = (function () {
         return {
           navKey: 'relatorios',
           eyebrow: 'Gestão',
-          title: 'Relatórios',
-          html: ModulePlaceholder.render('Relatórios', 'A geração de relatórios para a gestão será disponibilizada em uma próxima etapa do projeto.'),
+          title: 'Dashboard',
+          html: ModuleRelatorios.render(),
         };
 
       case 'configuracoes':

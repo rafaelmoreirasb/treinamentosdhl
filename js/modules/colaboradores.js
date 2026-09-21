@@ -230,17 +230,18 @@ window.ModuleColaboradores = (function () {
         <td><span class="badge badge--info">${t.tipo}</span></td>
         <td>${Utils.formatDate(t.data)}</td>
         <td>${Utils.escapeHtml(t.responsavel)}</td>
+        <td>${t.cargaHoraria != null ? String(t.cargaHoraria).replace('.', ',') + 'h' : '<span class="section__hint">—</span>'}</td>
         <td>${t.observacao ? Utils.escapeHtml(t.observacao) : '<span class="section__hint">—</span>'}</td>
         <td class="data-table__acoes">
-          <button class="link-action" type="button" onclick="ModuleTreinamentos.abrirModalTreinamento({id:'${t.id}'})">Editar</button>
-          <button class="link-action link-action--danger" type="button" onclick="ModuleTreinamentos.confirmarExclusao('${t.id}')">Excluir</button>
+          <button class="link-action" type="button" onclick="ModuleTreinamentos.abrirModalTreinamento({aplicacaoId:'${t.aplicacaoId}'})">Editar</button>
+          <button class="link-action link-action--danger" type="button" onclick="ModuleTreinamentos.confirmarExclusao('${t.aplicacaoId}')">Excluir</button>
         </td>
       </tr>
     `).join('');
     return `
       <div class="table-scroll">
         <table class="data-table">
-          <thead><tr><th>Treinamento</th><th>Data</th><th>Responsável</th><th>Observação</th><th>Ações</th></tr></thead>
+          <thead><tr><th>Treinamento</th><th>Data</th><th>Responsável</th><th>Carga horária</th><th>Observação</th><th>Ações</th></tr></thead>
           <tbody>${linhas}</tbody>
         </table>
       </div>

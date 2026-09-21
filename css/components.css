@@ -1207,3 +1207,37 @@ textarea.input {
   border-radius: 4px;
   font-size: 0.9em;
 }
+
+/* ---------- Lista de seleção múltipla de colaboradores (treinamento) ---------- */
+
+.checklist-colaboradores {
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.checklist-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 7px var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.checklist-item:hover {
+  background: var(--gray-050);
+}
+
+.checklist-item input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  accent-color: var(--dhl-red);
+}

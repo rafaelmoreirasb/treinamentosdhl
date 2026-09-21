@@ -28,11 +28,14 @@ window.ModuleAduana = (function () {
         <div class="section__header">
           <div>
             <h2 class="section__title">Indicadores operacionais</h2>
-            <p class="section__hint">Somatória geral = Aduana a Mais + Aduana Faltante</p>
+            <p class="section__hint">Somatória geral = Aduana a Mais + Aduana Faltante · ${todas.length} registro(s) no total</p>
           </div>
-          <span class="badge ${usandoFicticios ? 'badge--neutral' : 'badge--success'}">
-            ${usandoFicticios ? 'Nenhum dado importado ainda' : 'Dados do banco (online)'}
-          </span>
+          <div style="display:flex; align-items:center; gap:var(--space-3)">
+            <span class="badge ${usandoFicticios ? 'badge--neutral' : 'badge--success'}">
+              ${usandoFicticios ? 'Nenhum dado importado ainda' : 'Dados do banco (online)'}
+            </span>
+            <button class="btn btn--secondary" type="button" onclick="ModuleAduanaImport.abrirSeletor()">Importar Excel</button>
+          </div>
         </div>
         <div class="kpi-grid">
           ${kpi('Total de ocorrências', stats.totalOcorrencias)}
@@ -103,19 +106,6 @@ window.ModuleAduana = (function () {
       </div>
 
       ${AnaliseDashboard.render()}
-
-      <div class="section">
-        <div class="section__header">
-          <div>
-            <h2 class="section__title">Ocorrências registradas</h2>
-            <p class="section__hint">${filtradas.length} de ${todas.length} registro(s)</p>
-          </div>
-          <button class="btn btn--secondary" type="button" onclick="ModuleAduanaImport.abrirSeletor()">Importar Excel</button>
-        </div>
-        <div class="card card--tight">
-          ${occurrenceTable(filtradas)}
-        </div>
-      </div>
 
       <div class="section">
         <div class="section__header">
@@ -375,6 +365,10 @@ window.ModuleAduana = (function () {
     return ordenacao.direcao === 'asc' ? ' ▲' : ' ▼';
   }
 
+  // NOTA (Alteração 3): esta função não é mais chamada em lugar nenhum —
+  // a seção "Ocorrências registradas" foi removida da interface por
+  // pedido. Os dados continuam intactos no banco; mantive a função aqui,
+  // sem uso, caso a lista precise voltar a aparecer no futuro.
   function occurrenceTable(ocorrencias) {
     if (ocorrencias.length === 0) {
       return `<div class="data-table__empty">Nenhuma ocorrência encontrada para os filtros selecionados.</div>`;

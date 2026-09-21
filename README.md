@@ -3,22 +3,23 @@
 Aplicativo web para controle de treinamentos e ocorrências dos
 colaboradores da DHL Supply Chain.
 
-**Fase atual: melhorias sobre a Etapa 6** — gráfico de treinamentos por
-mês (na Início e na Treinamentos) e o novo módulo **Integração**, para
-cadastro e acompanhamento de novos colaboradores. O login continua
-removido do fluxo do app, como pedido (ver seção correspondente mais
-abaixo).
+**Fase atual: 5 alterações sobre o app existente** — treinamento aplicado
+a vários colaboradores de uma vez (com carga horária), remoção da lista
+"Ocorrências registradas" do Aduana, CPF no cadastro de Integração, e o
+menu "Relatórios" liberado e renomeado para **Dashboard**, com
+indicadores e gráficos mensais de treinamento. O login continua removido
+do fluxo do app, como pedido (ver seção correspondente mais abaixo).
 
 > **Antes de mais nada:** o aplicativo depende de um projeto Supabase
 > configurado. As seções "Como configurar" e "Como publicar na Vercel"
 > abaixo têm o passo a passo completo. Até você fazer isso, o aplicativo
 > mostra uma tela explicando o que falta configurar.
 
-> ⚠️ **Se você já tinha rodado `db/schema.sql` antes:** esta versão
-> adiciona uma tabela nova (`integracao`). Rode o arquivo `db/schema.sql`
-> inteiro de novo no SQL Editor do Supabase (pode rodar por cima do que
-> já existe, sem problema) — sem isso, a aba Integração vai dar o mesmo
-> tipo de erro de "tabela não existe" que você já viu antes.
+> ⚠️ **Rode o `db/schema.sql` de novo no SQL Editor do Supabase** (pode
+> rodar por cima do que já existe, sem problema). Esta versão adiciona
+> colunas novas (`aplicacao_id` e `carga_horaria` em treinamentos, `cpf`
+> em integração) — sem rodar o arquivo atualizado, essas telas vão dar
+> erro de "coluna não existe".
 
 ## Como configurar (primeira vez)
 
@@ -70,7 +71,8 @@ js/
     login.js                     → telas de login, cadastro, carregando, "configuração necessária"
     configuracoes.js             → versão do app, usuário logado, ferramenta de migração
     migracao.js                  → migra dados antigos do localStorage (Etapas 2-5) para o banco
-    integracao.js                 → módulo Integração: indicadores, busca, filtros, cadastro/edição/exclusão
+    integracao.js                 → módulo Integração: indicadores, busca, filtros, cadastro/edição/exclusão, CPF
+    relatorios.js                 → Dashboard: indicadores e gráficos mensais de treinamento (filtro mês/ano)
     dashboard.js, aduana.js, aduana-import.js, colaboradores.js, treinamentos.js, placeholder.js  → como antes
   analise/                      → análise de eficácia do treinamento (Etapa 5, sem alterações na lógica)
   data/mock-data.js             → dados fictícios, mantidos só para a ferramenta de migração
@@ -85,7 +87,7 @@ js/
 - **Estados de carregamento e erro**: "Carregando dados...", e mensagens simples quando falta conexão ("Não foi possível... Verifique sua conexão e tente novamente"), tanto ao entrar no aplicativo quanto ao salvar qualquer coisa
 - **Versão do aplicativo** visível no rodapé do menu (1.0.0)
 
-## Melhorias mais recentes
+## Melhorias anteriores (gráfico mensal + módulo Integração)
 
 ### 1. Gráfico "Treinamentos por mês" (Início e Treinamentos)
 
@@ -138,6 +140,80 @@ a mesma pessoa também estiver cadastrada no módulo Aduana, os dois
 registros são independentes por enquanto (não há vínculo automático
 entre eles) — uma futura unificação de cadastro de colaboradores entre
 módulos pode ser feita numa etapa própria, se fizer sentido.
+
+## Melhorias mais recentes (5 alterações)
+
+### 1. Treinamento aplicado a vários colaboradores de uma vez
+
+O formulário de "+ Novo treinamento" agora tem uma **lista de
+colaboradores com caixinhas de marcar** (pesquisável, digite para
+filtrar) em vez de escolher um nome só. Um treinamento aplicado para 20
+pessoas continua sendo **1 aplicação de treinamento**, com **20
+colaboradores treinados** — os dois números nunca se confundem em
+lugar nenhum do app.
+
+- Por baixo, cada colaborador ainda vira uma linha própria no banco
+  (assim o histórico individual de cada um continua funcionando
+  exatamente como antes — perfil, análise antes/depois, tudo igual),
+  mas todas as linhas de uma mesma aplicação compartilham um
+  identificador comum (`aplicacao_id`)
+- A tabela da aba Treinamentos mostra **uma linha por aplicação**, com
+  os nomes dos participantes (os 3 primeiros + "e mais N"), não uma
+  linha repetida por pessoa
+- **Editar** uma aplicação reabre a mesma lista de colaboradores, já
+  marcados — dá para adicionar ou remover participantes; quem
+  permanece só tem os dados compartilhados atualizados (data,
+  responsável, carga horária, observação)
+- **Excluir** remove a aplicação inteira (todos os participantes),
+  sempre com confirmação mostrando quem seria afetado
+- Registros antigos (de antes desta alteração) continuam aparecendo
+  normalmente — a migração do banco transformou cada um deles em uma
+  "aplicação" própria, de um colaborador só
+
+### 2. Carga horária
+
+Novo campo no formulário ("Carga horária (horas)", aceita decimais como
+1,5). Fica salva uma vez por aplicação — nunca multiplicada pela
+quantidade de participantes. Um treinamento de 2 horas para 15 pessoas
+sempre soma **2 horas**, não 30.
+
+### 3. Lista "Ocorrências registradas" removida do Aduana
+
+A seção com a tabela linha-a-linha das ocorrências foi tirada da tela.
+Nada foi apagado: os dados, os cálculos, os gráficos, o ranking, a
+importação de Excel — tudo continua exatamente igual, só essa lista
+específica não aparece mais. O botão **"Importar Excel"** continua
+disponível, agora no topo da tela, ao lado do indicador de status dos
+dados.
+
+### 4. CPF no cadastro de Integração
+
+Campo novo, opcional, com **máscara automática** (000.000.000-00
+enquanto digita) e **validação de verdade** (calcula os dígitos
+verificadores do CPF — rejeita sequências óbvias tipo
+111.111.111-11, mesmo que "pareçam" ter o formato certo). Como é
+opcional, cadastros antigos sem CPF continuam funcionando normalmente,
+sem nenhum bloqueio.
+
+### 5. "Relatórios" virou "Dashboard"
+
+O item do menu que estava travado como "Em breve" foi liberado e
+renomeado. Mostra, para o mês/ano selecionado (com botão "Mês atual"
+para voltar rápido):
+- 👥 Colaboradores treinados no mês (pessoas distintas — quem fez 3
+  treinamentos no mês conta uma vez só)
+- ⏱ Horas de treinamento aplicadas no mês (soma por aplicação, não por
+  participante)
+- 📚 Treinamentos aplicados no mês (contagem de aplicações)
+- 3 gráficos de barras com os últimos 12 meses terminando no mês
+  selecionado (mudar o filtro desliza a janela de 12 meses junto)
+
+Todos os números vêm dos mesmos dados reais da aba Treinamentos — as
+mesmas funções de cálculo usadas no gráfico "Treinamentos por mês" (já
+existente desde a melhoria anterior), agora corrigidas para contar
+**aplicações**, não linhas de participante (uma correção necessária:
+antes desta alteração, um treinamento para 20 pessoas teria contado
+como 20 no gráfico — agora conta como 1, corretamente).
 
 ## Por que Supabase
 
@@ -463,6 +539,37 @@ código do aplicativo — só um erro no meu script de teste (o "banco
 simulado" que uso para testar precisava aprender sobre a tabela nova),
 já corrigido antes de rodar o teste de verdade.
 
+**Testes das 5 alterações mais recentes** (também com Supabase simulado):
+- App continua abrindo sem login normalmente
+- Menu mostra "Dashboard" (não mais "Relatórios"); página carrega com
+  os 3 indicadores e os 3 gráficos de 12 meses
+- Aduana: seção "Ocorrências registradas" não aparece mais; "Histórico
+  de importações" continua lá; botão "Importar Excel" continua
+  funcionando; indicadores continuam calculando normalmente (dados não
+  foram apagados)
+- Treinamento para 4 colaboradores de uma vez: as 4 linhas no banco
+  compartilham o mesmo identificador de aplicação; carga horária salva
+  igual nas 4 (não multiplicada); a tabela mostra **1 linha só** para
+  essa aplicação, com a contagem de participantes; o perfil individual
+  de cada colaborador mostra o treinamento normalmente
+- Editar a aplicação: os 4 participantes vêm pré-marcados; remover um
+  (desmarcar) e salvar deixa só 3, sem apagar nada dos outros
+- Excluir a aplicação inteira remove todos os participantes de uma vez
+- Confirmado que o gráfico "Treinamentos por mês" conta a aplicação
+  como 1 (não 2, mesmo com 2 participantes naquele mês)
+- CPF: coluna aparece na tabela, campo aparece no formulário, CPF com
+  dígitos verificadores errados é rejeitado, CPF válido é aceito e
+  salvo corretamente, e cadastro **sem** CPF (campo opcional) continua
+  funcionando sem bloqueio
+- Regressão final: Aduana, Colaboradores e Integração continuam
+  carregando normalmente
+
+**Zero erros de JavaScript em todos os testes.** Um problema foi
+encontrado e corrigido durante os testes — não no aplicativo, no meu
+"banco simulado" de teste, que precisou aprender sobre uma tabela já
+existente (mesmo tipo de ajuste de ambiente de teste já visto em
+rodadas anteriores).
+
 ## Pontos de atenção
 
 - **Deploy não foi feito** — só preparado, como pedido explicitamente
@@ -481,6 +588,18 @@ já corrigido antes de rodar o teste de verdade.
   criada uma tela dedicada de auditoria nesta etapa
 - `js/data/mock-data.js` não é mais usado pelo aplicativo em si — só pela
   ferramenta de migração; pode ser removido com segurança mais adiante
+- **Filtro de período personalizado no Dashboard não foi implementado**
+  — só mês/ano, que já atende o pedido principal. Um período livre
+  (data inicial/final) pode ser adicionado depois, se fizer falta
+- **Editar um treinamento a partir do perfil de um colaborador** abre a
+  aplicação inteira (com todos os participantes originais, não só
+  aquela pessoa) — é o comportamento esperado (edição sempre acontece
+  no nível da aplicação), mas pode surpreender se não estiver esperando
+  ver outros nomes na lista
+- O campo "Tipo de treinamento" continua mostrando só "Aduana" (mesmo
+  com os exemplos do pedido mencionando "Treinamento de Avaria") — o
+  módulo Avaria ainda não existe no sistema; quando for criado, dá para
+  adicionar como uma nova opção nesse mesmo campo, sem mudar a estrutura
 
 ## Próximas etapas (aguardando sua autorização)
 

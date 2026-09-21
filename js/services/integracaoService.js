@@ -21,6 +21,7 @@ window.IntegracaoService = (function () {
       matricula: row.matricula || '',
       email: row.email,
       ext: row.ext || '',
+      cpf: row.cpf || '',
       integracaoQa: row.integracao_qa,
       oiCheguei: row.oi_cheguei,
     };
@@ -35,6 +36,7 @@ window.IntegracaoService = (function () {
       matricula: dados.matricula || null,
       email: dados.email,
       ext: dados.ext || null,
+      cpf: dados.cpf ? dados.cpf.replace(/\D/g, '') : null,
       integracao_qa: dados.integracaoQa,
       oi_cheguei: dados.oiCheguei,
     };

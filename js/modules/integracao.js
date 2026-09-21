@@ -142,6 +142,7 @@ window.ModuleIntegracao = (function () {
             <span>${Utils.escapeHtml(i.nome)}</span>
           </div>
         </td>
+        <td>${i.cpf ? Utils.escapeHtml(Utils.mascararCPF(i.cpf)) : '<span class="section__hint">—</span>'}</td>
         <td>${Utils.escapeHtml(i.telefone)}</td>
         <td>${Utils.escapeHtml(i.endereco)}</td>
         <td>${Utils.escapeHtml(i.cidade)}</td>
@@ -163,6 +164,7 @@ window.ModuleIntegracao = (function () {
           <thead>
             <tr>
               <th>Nome</th>
+              <th>CPF</th>
               <th>Telefone</th>
               <th>Endereço</th>
               <th>Cidade</th>
@@ -187,7 +189,7 @@ window.ModuleIntegracao = (function () {
   function abrirModalIntegracao(opcoes) {
     opcoes = opcoes || {};
     const editando = opcoes.id ? Store.getIntegracaoPorId(opcoes.id) : null;
-    const v = editando || { nome: '', telefone: '', endereco: '', cidade: '', matricula: '', email: '', ext: '', integracaoQa: 'Pendente', oiCheguei: 'Pendente' };
+    const v = editando || { nome: '', cpf: '', telefone: '', endereco: '', cidade: '', matricula: '', email: '', ext: '', integracaoQa: 'Pendente', oiCheguei: 'Pendente' };
 
     Modal.open({
       title: editando ? 'Editar colaborador' : 'Novo colaborador',
@@ -198,6 +200,12 @@ window.ModuleIntegracao = (function () {
             <div class="field">
               <label for="int-nome">Nome do colaborador *</label>
               <input class="input" type="text" id="int-nome" value="${Utils.escapeHtml(v.nome)}" required>
+            </div>
+            <div class="field">
+              <label for="int-cpf">CPF</label>
+              <input class="input" type="text" id="int-cpf" placeholder="000.000.000-00" maxlength="14"
+                     value="${v.cpf ? Utils.escapeHtml(Utils.mascararCPF(v.cpf)) : ''}"
+                     oninput="this.value = Utils.mascararCPF(this.value)">
             </div>
             <div class="field">
               <label for="int-telefone">Telefone *</label>
@@ -257,6 +265,7 @@ window.ModuleIntegracao = (function () {
 
     const dados = {
       nome: document.getElementById('int-nome').value.trim(),
+      cpf: document.getElementById('int-cpf').value.trim(),
       telefone: document.getElementById('int-telefone').value.trim(),
       endereco: document.getElementById('int-endereco').value.trim(),
       cidade: document.getElementById('int-cidade').value.trim(),
@@ -269,6 +278,10 @@ window.ModuleIntegracao = (function () {
 
     if (!dados.nome || !dados.telefone || !dados.endereco || !dados.cidade || !dados.email) {
       Toast.show('Preencha os campos obrigatórios.', 'warning');
+      return;
+    }
+    if (dados.cpf && !Utils.validarCPF(dados.cpf)) {
+      Toast.show('Informe um CPF válido (ou deixe o campo em branco).', 'warning');
       return;
     }
     if (!validarEmail(dados.email)) {

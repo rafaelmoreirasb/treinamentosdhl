@@ -89,18 +89,90 @@ window.Utils = (function () {
 
   const NOMES_MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
-  // Agrupa uma lista de treinamentos por mês/ano (não mistura o mesmo mês
-  // de anos diferentes: Set/2025 e Set/2026 ficam separados). Conta
-  // TREINAMENTOS (um registro = um treinamento), nunca ocorrências.
-  function agruparTreinamentosPorMes(treinamentos) {
-    const contagem = new Map(); // 'YYYY-MM' -> quantidade
+  // Agrupa as linhas de treinamento por "aplicacaoId" — várias linhas
+  // (uma por colaborador) que pertencem à mesma aplicação viram um só
+  // grupo. Registros antigos, sem aplicacaoId, contam cada um como sua
+  // própria aplicação (usa o próprio id como chave).
+  function agruparTreinamentosPorAplicacao(treinamentos) {
+    const mapa = new Map(); // chave -> [linhas]
     treinamentos.forEach(t => {
-      const chave = t.data.slice(0, 7);
+      const chave = t.aplicacaoId || t.id;
+      if (!mapa.has(chave)) mapa.set(chave, []);
+      mapa.get(chave).push(t);
+    });
+    return mapa;
+  }
+
+  // Agrupa por mês/ano (não mistura o mesmo mês de anos diferentes: Set/2025
+  // e Set/2026 ficam separados). Conta APLICAÇÕES de treinamento — um
+  // treinamento aplicado a vários colaboradores conta uma vez só, nunca
+  // ocorrências de Aduana.
+  function agruparTreinamentosPorMes(treinamentos) {
+    const porAplicacao = agruparTreinamentosPorAplicacao(treinamentos);
+    const contagem = new Map(); // 'YYYY-MM' -> quantidade de aplicações
+    porAplicacao.forEach(linhas => {
+      const chave = linhas[0].data.slice(0, 7);
       contagem.set(chave, (contagem.get(chave) || 0) + 1);
     });
     return [...contagem.keys()].sort().map(chave => {
       const [ano, mes] = chave.split('-');
       return { chave, label: `${NOMES_MESES[parseInt(mes, 10) - 1]}/${ano}`, total: contagem.get(chave) };
+    });
+  }
+
+  // ---------------------------------------------------------------
+  // Indicadores mensais para o Dashboard (Colaboradores treinados,
+  // Horas de treinamento, Treinamentos aplicados). Diferencia claramente
+  // os três conceitos — ver comentários de cada um.
+  // ---------------------------------------------------------------
+
+  function calcularIndicadoresTreinamentoMes(treinamentos, anoMes) {
+    const doMes = treinamentos.filter(t => t.data.slice(0, 7) === anoMes);
+    const porAplicacao = agruparTreinamentosPorAplicacao(doMes);
+
+    // Colaboradores treinados: pessoas DISTINTAS no mês — se a mesma
+    // pessoa participou de 3 treinamentos no mês, conta uma vez só.
+    const colaboradoresUnicos = new Set(doMes.map(t => t.colaboradorId));
+
+    // Horas de treinamento: soma a carga horária UMA VEZ por aplicação
+    // (nunca multiplicada pela quantidade de participantes daquela aplicação).
+    let horas = 0;
+    porAplicacao.forEach(linhas => {
+      horas += Number(linhas[0].cargaHoraria) || 0;
+    });
+
+    return {
+      colaboradoresTreinados: colaboradoresUnicos.size,
+      horasTreinamento: horas,
+      treinamentosAplicados: porAplicacao.size,
+    };
+  }
+
+  // Mês anterior/posterior no formato 'YYYY-MM', para montar séries de
+  // vários meses sem depender de bibliotecas de data.
+  function deslocarAnoMes(anoMes, delta) {
+    const [ano, mes] = anoMes.split('-').map(Number);
+    const data = new Date(Date.UTC(ano, mes - 1 + delta, 1));
+    return `${data.getUTCFullYear()}-${String(data.getUTCMonth() + 1).padStart(2, '0')}`;
+  }
+
+  // Série dos últimos 12 meses (incluindo o mês informado como o último),
+  // com os três indicadores lado a lado — usada nos três gráficos do
+  // Dashboard.
+  function calcularSeriesTreinamento12Meses(treinamentos, anoMesFinal) {
+    const meses = [];
+    for (let i = 11; i >= 0; i--) meses.push(deslocarAnoMes(anoMesFinal, -i));
+
+    return meses.map(anoMes => {
+      const [ano, mes] = anoMes.split('-');
+      const ind = calcularIndicadoresTreinamentoMes(treinamentos, anoMes);
+      return {
+        anoMes,
+        label: `${NOMES_MESES[parseInt(mes, 10) - 1]}/${ano}`,
+        colaboradoresTreinados: ind.colaboradoresTreinados,
+        horasTreinamento: ind.horasTreinamento,
+        treinamentosAplicados: ind.treinamentosAplicados,
+      };
     });
   }
 
@@ -142,6 +214,37 @@ window.Utils = (function () {
     `;
   }
 
+  // Valida CPF (formato + dígitos verificadores). Aceita com ou sem
+  // pontuação. Rejeita sequências óbvias (000.000.000-00, 111.111.111-11
+  // etc.) que passariam no cálculo mas nunca são CPFs reais.
+  function validarCPF(valor) {
+    const digitos = String(valor || '').replace(/\D/g, '');
+    if (digitos.length !== 11) return false;
+    if (/^(\d)\1{10}$/.test(digitos)) return false;
+
+    function calcularDigito(base) {
+      let soma = 0;
+      for (let i = 0; i < base.length; i++) {
+        soma += parseInt(base[i], 10) * (base.length + 1 - i);
+      }
+      const resto = (soma * 10) % 11;
+      return resto === 10 ? 0 : resto;
+    }
+
+    const d1 = calcularDigito(digitos.slice(0, 9));
+    const d2 = calcularDigito(digitos.slice(0, 9) + d1);
+    return digitos === digitos.slice(0, 9) + String(d1) + String(d2);
+  }
+
+  // Aplica a máscara 000.000.000-00 enquanto a pessoa digita.
+  function mascararCPF(valor) {
+    const digitos = String(valor || '').replace(/\D/g, '').slice(0, 11);
+    return digitos
+      .replace(/^(\d{3})(\d)/, '$1.$2')
+      .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+      .replace(/\.(\d{3})(\d)/, '.$1-$2');
+  }
+
   return {
     formatDate,
     formatMonthLabel,
@@ -150,7 +253,12 @@ window.Utils = (function () {
     escapeHtml,
     computeAduanaStats,
     agruparTreinamentosPorMes,
+    agruparTreinamentosPorAplicacao,
+    calcularIndicadoresTreinamentoMes,
+    calcularSeriesTreinamento12Meses,
     renderGraficoBarras,
     renderSecaoTreinamentosPorMes,
+    validarCPF,
+    mascararCPF,
   };
 })();

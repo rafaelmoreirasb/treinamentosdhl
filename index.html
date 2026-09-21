@@ -62,7 +62,7 @@
 
         <button class="nav-item" data-nav="relatorios">
           <span class="nav-item__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"/><path d="M11 20V4"/><path d="M18 20v-7"/><path d="M2.5 20.5h19"/></svg></span>
-          <span class="nav-item__label">Relatórios</span>
+          <span class="nav-item__label">Dashboard</span>
         </button>
 
         <button class="nav-item" data-nav="configuracoes">
@@ -106,60 +106,61 @@
   <div id="toast-root" class="toast-root"></div>
 
   <!-- Biblioteca de terceiros: leitura de planilhas .xlsx (SheetJS) -->
-  <script src="js/vendor/xlsx.full.min.js?v5"></script>
+  <script src="js/vendor/xlsx.full.min.js?v6"></script>
 
   <!-- Biblioteca de terceiros: cliente do Supabase (banco online + login) -->
-  <script src="js/vendor/supabase.js?v5"></script>
+  <script src="js/vendor/supabase.js?v6"></script>
 
   <!-- Configuração do projeto Supabase (URL + chave pública).
        Veja js/config.example.js — copie para js/config.js e preencha. -->
-  <script src="js/config.js?v5"></script>
+  <script src="js/config.js?v6"></script>
 
   <!-- Ícones e utilitários -->
-  <script src="js/icons.js?v5"></script>
-  <script src="js/utils.js?v5"></script>
+  <script src="js/icons.js?v6"></script>
+  <script src="js/utils.js?v6"></script>
 
   <!-- Dados fictícios (mantidos só para a ferramenta de migração) -->
-  <script src="js/data/mock-data.js?v5"></script>
+  <script src="js/data/mock-data.js?v6"></script>
 
   <!-- Camada de acesso ao banco (um arquivo por "tabela") -->
-  <script src="js/services/supabaseClient.js?v5"></script>
-  <script src="js/services/authService.js?v5"></script>
-  <script src="js/services/colaboradoresService.js?v5"></script>
-  <script src="js/services/treinamentosService.js?v5"></script>
-  <script src="js/services/aduanaService.js?v5"></script>
-  <script src="js/services/importacoesService.js?v5"></script>
-  <script src="js/services/integracaoService.js?v5"></script>
+  <script src="js/services/supabaseClient.js?v6"></script>
+  <script src="js/services/authService.js?v6"></script>
+  <script src="js/services/colaboradoresService.js?v6"></script>
+  <script src="js/services/treinamentosService.js?v6"></script>
+  <script src="js/services/aduanaService.js?v6"></script>
+  <script src="js/services/importacoesService.js?v6"></script>
+  <script src="js/services/integracaoService.js?v6"></script>
 
   <!-- Estado da aplicação (cache em memória alimentado pelo banco) -->
-  <script src="js/state.js?v5"></script>
+  <script src="js/state.js?v6"></script>
 
   <!-- Componentes reutilizáveis -->
-  <script src="js/components/modal.js?v5"></script>
-  <script src="js/components/toast.js?v5"></script>
-  <script src="js/actions.js?v5"></script>
+  <script src="js/components/modal.js?v6"></script>
+  <script src="js/components/toast.js?v6"></script>
+  <script src="js/actions.js?v6"></script>
 
   <!-- Autenticação (login, cadastro, carregando, configuração necessária) -->
-  <script src="js/modules/login.js?v5"></script>
+  <script src="js/modules/login.js?v6"></script>
 
   <!-- Análise de eficácia do treinamento (cálculo separado da tela) -->
-  <script src="js/analise/calculo.js?v5"></script>
-  <script src="js/analise/render-perfil.js?v5"></script>
-  <script src="js/analise/render-dashboard.js?v5"></script>
+  <script src="js/analise/calculo.js?v6"></script>
+  <script src="js/analise/render-perfil.js?v6"></script>
+  <script src="js/analise/render-dashboard.js?v6"></script>
 
   <!-- Módulos -->
-  <script src="js/modules/placeholder.js?v5"></script>
-  <script src="js/modules/dashboard.js?v5"></script>
-  <script src="js/modules/aduana.js?v5"></script>
-  <script src="js/modules/aduana-import.js?v5"></script>
-  <script src="js/modules/colaboradores.js?v5"></script>
-  <script src="js/modules/treinamentos.js?v5"></script>
-  <script src="js/modules/integracao.js?v5"></script>
-  <script src="js/modules/migracao.js?v5"></script>
-  <script src="js/modules/configuracoes.js?v5"></script>
+  <script src="js/modules/placeholder.js?v6"></script>
+  <script src="js/modules/relatorios.js?v6"></script>
+  <script src="js/modules/dashboard.js?v6"></script>
+  <script src="js/modules/aduana.js?v6"></script>
+  <script src="js/modules/aduana-import.js?v6"></script>
+  <script src="js/modules/colaboradores.js?v6"></script>
+  <script src="js/modules/treinamentos.js?v6"></script>
+  <script src="js/modules/integracao.js?v6"></script>
+  <script src="js/modules/migracao.js?v6"></script>
+  <script src="js/modules/configuracoes.js?v6"></script>
 
   <!-- Roteamento e inicialização -->
-  <script src="js/router.js?v5"></script>
-  <script src="js/app.js?v5"></script>
+  <script src="js/router.js?v6"></script>
+  <script src="js/app.js?v6"></script>
 </body>
 </html>

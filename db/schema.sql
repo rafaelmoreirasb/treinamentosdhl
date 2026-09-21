@@ -95,6 +95,23 @@ comment on table treinamentos is 'Histórico completo de treinamentos. Um colabo
 create index if not exists idx_treinamentos_colaborador on treinamentos (colaborador_id);
 create index if not exists idx_treinamentos_tipo_data on treinamentos (tipo, data);
 
+-- Colunas adicionadas depois (Alterações 1 e 2): "aplicacao_id" agrupa
+-- várias linhas (uma por colaborador) que pertencem ao MESMO treinamento
+-- aplicado — assim dá para diferenciar "quantas aplicações de
+-- treinamento" de "quantos colaboradores foram treinados", sem duplicar
+-- treinamento nenhum. "carga_horaria" é a duração da aplicação (não é
+-- multiplicada pela quantidade de participantes).
+alter table treinamentos add column if not exists aplicacao_id uuid;
+alter table treinamentos add column if not exists carga_horaria numeric(5,2);
+
+-- Registros antigos (de antes desta coluna existir) não tinham esse
+-- agrupamento — cada um deles já representava sozinho uma aplicação, então
+-- preenchemos aplicacao_id = id (um grupo de um único colaborador cada).
+update treinamentos set aplicacao_id = id where aplicacao_id is null;
+
+alter table treinamentos alter column aplicacao_id set not null;
+create index if not exists idx_treinamentos_aplicacao on treinamentos (aplicacao_id);
+
 -- ----------------------------------------------------------------------------
 -- 4. IMPORTAÇÕES (histórico de arquivos importados)
 -- ----------------------------------------------------------------------------
@@ -167,6 +184,15 @@ comment on table integracao is 'Cadastro e acompanhamento da integração de nov
 
 create index if not exists idx_integracao_nome on integracao (lower(nome));
 create index if not exists idx_integracao_cidade on integracao (lower(cidade));
+
+-- Coluna adicionada depois (Alteração 4): CPF é opcional (cadastros
+-- antigos continuam funcionando sem ele), mas quando informado deve ter
+-- o formato correto — a validação de verdade acontece no frontend antes
+-- de salvar; aqui só garantimos que, se vier preenchido, tem 11 dígitos.
+alter table integracao add column if not exists cpf text;
+alter table integracao drop constraint if exists integracao_cpf_formato;
+alter table integracao add constraint integracao_cpf_formato
+  check (cpf is null or cpf ~ '^\d{11}$');
 
 -- ----------------------------------------------------------------------------
 -- 6. Gatilho simples para manter "atualizado_em" em dia
